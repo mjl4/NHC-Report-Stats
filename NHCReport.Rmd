@@ -1,0 +1,170 @@
+---
+title: "National Hurricane Center Report Statistics"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+years <- unique(TCR.Stats...Full$Year)
+```
+
+```{r}
+TCR.Stats...Full[20,13]
+```
+
+
+```{r}
+ReportLenAvg <- integer(length(years))
+a = 1
+b = 1
+for (i in 1:length(years)) {
+  S = 0
+  for (i in 0:(TCR.Stats...Full[a,13]-1)) {
+      S = S + TCR.Stats...Full[a+i,7]
+    }
+  ReportLenAvg[b] = S/TCR.Stats...Full[a,13]
+  a = a + TCR.Stats...Full[a,13]
+  b = b + 1
+}
+```
+
+```{r}
+TimeToRepAvg <- integer(length(years))
+a = 1
+b = 1
+for (i in 1:length(years)) {
+  S = 0
+  for (i in 0:(TCR.Stats...Full[a,13]-1)) {
+      S = S + TCR.Stats...Full[a+i,6]
+    }
+  TimeToRepAvg[b] = S/TCR.Stats...Full[a,13]
+  a = a + TCR.Stats...Full[a,13]
+  b = b + 1
+}
+```
+
+```{r}
+ShortestRep <- integer(length(years))
+for (i in 1995:2022) {
+  ShortestRep[i-1994] = min(TCR.Stats...Full$Report.Length[TCR.Stats...Full$Year==i])
+}
+print(ShortestRep)
+
+LongestRep <- integer(length(years))
+for (i in 1995:2022) {
+  LongestRep[i-1994] = max(TCR.Stats...Full$Report.Length[TCR.Stats...Full$Year==i])
+}
+print(LongestRep)
+avgFigs <- integer(length(years))
+for (i in 1995:2022) {
+  avgFigs[i-1994] = mean(TCR.Stats...Full$No..Figures[TCR.Stats...Full$Year == i])
+}
+```
+
+```{r}
+PeakClass <- TCR.Stats...Full$Peak.Intensity
+PeakClass[PeakClass < 65] <- "TS"
+PeakClass[as.numeric(PeakClass) >= 65 & as.numeric(PeakClass) < 100] <- "H"
+PeakClass[as.numeric(PeakClass) >= 100] <- "MH"
+TCR.Stats...Full$PeakClass <- PeakClass
+LandfallClass <- TCR.Stats...Full$Landfall.Intensity
+LandfallClass[LandfallClass < 65] <- "TS"
+LandfallClass[is.na(LandfallClass)] <- "NA"
+LandfallClass[as.numeric(LandfallClass) >= 65 & as.numeric(LandfallClass) < 100] <- "H"
+LandfallClass[as.numeric(LandfallClass) >= 100] <- "MH"
+TCR.Stats...Full$LandfallClass <- LandfallClass
+```
+
+
+```{r}
+lmTimeLen <- lm(Report.Length ~ Time.to.Report, data = TCR.Stats...Full)
+plot(Report.Length~Time.to.Report,data=TCR.Stats...Full,col=factor(PeakClass),
+     xlab = "Time to Report (Days)",ylab = "Report Length (Pages)", pch=3)
+legend("topleft",
+       legend = c("Hurricane","Major Hurricane","Tropical Storm"),
+       pch = 4,
+       col = factor(levels(factor(TCR.Stats...Full$PeakClass))))
+```
+
+.
+```{r}
+plot(years,avgFigs,pch=4,ylab="Average Number of Figures",xlab="Year")
+```
+
+```{r}
+plot(years,ReportLenAvg,pch=4,ylab="Average TCR Length",xlab="Year")
+```
+
+```{r}
+plot(years,TimeToRepAvg,xlab = "Year",ylab = "Average Time to Report",pch=3)
+```
+```{r}
+plot(TCR.Stats...Full$Season.Total,TCR.Stats...Full$Time.to.Report,ylab = "Time to Report (Days)",xlab = "Number of storms")
+```
+
+
+```{r}
+USLandfalls <- filter(TCR.Stats...Full,Landfall == "USA" | Landfall == "USA PR" | Landfall == "USVI" | Landfall == "USAEX")
+```
+
+```{r}
+plot(USLandfalls$Time.to.Report,USLandfalls$Report.Length,xlab = "Time to Report (Days)",ylab = "Report Length (Pages)")
+```
+
+```{r}
+USMajors <- filter(USLandfalls,Landfall.Intensity >= 100)
+```
+
+```{r}
+plot(USMajors$Time.to.Report,USMajors$Report.Length,xlab = "Time to Report (Days)",ylab = "Report Length (Pages)")
+```
+```{r}
+Past15 <- filter(TCR.Stats...Full,Year >= 2008)
+```
+
+```{r}
+lm15TimeLen <- lm(Report.Length ~ Time.to.Report, data = Past15)
+plot(Past15$Time.to.Report,Past15$Report.Length,xlab = "Time to Report (Days)",ylab = "Report Length (Pages)")
+```
+
+```{r}
+LandfallSimple <- TCR.Stats...Full$Landfall
+LandfallSimple[LandfallSimple == "USA" | LandfallSimple == "USA PR" | LandfallSimple == "USVI" | LandfallSimple == "USAEX"] <- "US"
+LandfallSimple[LandfallSimple == "Mexico" | LandfallSimple == "Nicaragua" | LandfallSimple == "Belize" | LandfallSimple == "Honduras"] <- "Central America"
+LandfallSimple[LandfallSimple == "Antilles" | LandfallSimple == "Cuba" | LandfallSimple == "St. Vincent" | LandfallSimple == "Haiti" | LandfallSimple == "DR" | LandfallSimple == "Trinidad"] <- "Carribean"
+LandfallSimple[LandfallSimple == "Canada" | LandfallSimple == "CanadaEX" | LandfallSimple == "Bermuda" | LandfallSimple == "Caicos" | LandfallSimple == "Bahamas" | LandfallSimple == "Azores"] <- "Atlantic"
+LandfallSimple[LandfallSimple == "Spain" | LandfallSimple == "Portugal" | LandfallSimple == "Venezuela" | LandfallSimple == "IrelandEX"] <- "Other"
+LandfallSimple[is.na(LandfallSimple)] <- "None"
+
+LandfallUS <- LandfallSimple
+LandfallUS[LandfallUS != "US"] <- "Non US"
+```
+
+```{r}
+TCR.Stats...Full$LandfallSimple <- LandfallSimple
+TCR.Stats...Full$LandfallUS <- LandfallUS
+```
+
+
+```{r}
+plot(Time.to.Report ~ Year, data = TCR.Stats...Full, col=factor(LandfallUS),ylab = "Time to Report (Days)",xlab = "Year")
+legend("topleft",
+       legend = levels(factor(TCR.Stats...Full$LandfallUS)),
+       pch = 19,
+       col = factor(levels(factor(TCR.Stats...Full$LandfallUS))))
+```
+```{r}
+unique(TCR.Stats...Full$Landfall)
+```
+
+```{r}
+mean(TCR.Stats...Full$Time.to.Report[TCR.Stats...Full$LandfallUS == "Non US" & TCR.Stats...Full$Year < 2000])
+mean(TCR.Stats...Full$Time.to.Report[TCR.Stats...Full$LandfallUS == "US" & TCR.Stats...Full$Landfall.Intensity >= 65 & TCR.Stats...Full$Year < 2000])
+```
+
+```{r}
+hist(TCR.Stats...Full$Report.Length,breaks = c(0,10,20,30,40,50,60,70,80,170))
+```
